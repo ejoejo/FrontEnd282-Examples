@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="css/style.css">
+    <title>猜數字</title>
+    <script src="js/bundle.js"></script>
+</head>
+
+<body>
+    <input type="text" id="number">
+    <input type="number" placeholder="請輸入數字" id="input" maxlength="4" oninput="this.value=this.value.replace(/[^0-9]/g,'');"
+        pattern="[0-9]*">
+    <button type="button" class="btn">確定</button>
+    <button type="button" id="reset">重玩</button>
+    <div id="result"></div>
+</body>
+
+</html>
