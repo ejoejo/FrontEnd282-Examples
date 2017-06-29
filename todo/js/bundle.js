@@ -108,37 +108,81 @@ MyStorage.prototype.setItem = function (key, value) {
 
 MyStorage.prototype.insert = function (collectionName, item) {
     var newinput = [];
-    var Name;
-    if (collectionName === "node-order")
+    var Name, orgkey, collection, keys, key, index;
+    if (collectionName === "node-order") {
         Name = "node";
-    var orgkey = this.getCollection(collectionName);
-    var collection = new Collection(Name);
-    this.collections[Name] = collection;
-    collection = this.collections[Name];
-    collection.insert(item);
-    var keys = collection.keys;
-    var key = keys[keys.length - 1];
-    this.setItem(collectionName, keys);
-    this.setItem(key, item);
+        orgkey = this.getCollection(collectionName);
+        collection = new Collection(Name);
+        this.collections[Name] = collection;
+        collection = this.collections[Name];
+        collection.insert(item);
+        keys = collection.keys;
+        key = keys[keys.length - 1];
+        this.setItem(collectionName, keys);
+        this.setItem(key, item);
 
-    if (orgkey.length > 0) {
-        for (var index = 0; index < orgkey.length; index++) {
-            newinput.push(orgkey[index]);
+        if (orgkey.length > 0) {
+            for (index = 0; index < orgkey.length; index++) {
+                newinput.push(orgkey[index]);
+            }
+            newinput.push(key);
+            this.setItem(collectionName, newinput);
         }
-        newinput.push(key);
-        this.setItem(collectionName, newinput);
+    } else {
+        Name = "item";
+        orgkey = this.getCollection("item-keys");
+        collection = new Collection(Name);
+        this.collections[Name] = collection;
+        collection = this.collections[Name];
+        collection.insert(item);
+        keys = collection.keys;
+        key = keys[keys.length - 1];
+        this.setItem("item-keys", keys);
+        this.setItem(key, item);
+
+        if (orgkey.length > 0) {
+            for (index = 0; index < orgkey.length; index++) {
+                newinput.push(orgkey[index]);
+            }
+            newinput.push(key);
+            this.setItem("item-keys", newinput);
+        }
     }
 };
 
 MyStorage.prototype.delete = function (key) {
-    var keys = this.getCollection('node-order');
+    var url = window.location.href;
+    if (url.indexOf("id=") === -1) { //分類
+        var ItemKeys = this.getCollection("item-keys"); //讀取item-keys陣列
+        var newItemKey = [];
+        for (var index = 0; index < ItemKeys.length; index++) {
+            var Item = this.getItem(ItemKeys[index]);
+            if (Item.id === key) {
+                localStorage.removeItem(Item.key);
+            } else {
+                newItemKey.push(ItemKeys[index])
+            }
+        }
+        this.setItem("item-keys", newItemKey);
+        var keys = this.getCollection('node-order'); //刪除後要更新的node-order
+        for (var index = 0; index < keys.length; index++) { //產出最後的node-order
+            if (keys[index] === key) {
+                keys.splice(index, 1);
+            }
+        }
+        this.setItem("node-order", keys);
+        localStorage.removeItem(key);
+    } else {
+        var keys = this.getCollection('item-keys');
 
-    var item = this.getItem(key);
-    for (var index = 0; index < keys.length; index++) {
-        if (keys[index] === key)
-            keys.splice(index, 1);
+        item = this.getItem(key);
+        for (var index = 0; index < keys.length; index++) {
+            if (keys[index] === key)
+                keys.splice(index, 1);
+        }
+        this.setItem("item-keys", keys);
+
     }
-    this.setItem("node-order", keys);
 };
 
 module.exports = MyStorage;
@@ -11949,76 +11993,178 @@ var Sortable = __webpack_require__(2);
 
 $(function () {
     var db = new Storage("localStorage");
-    var node = db.getCollection('node-order');
 
-    if (node.length > 0) {
-
-        var $node = $('#node');
-        var note = [];
-        for (var index = 0; index < node.length; index++) {
-            note = db.getItem(node[index]);
-            var $note = $('<li id=' + node[index] + '>');
-            var $span = $('<span>x</span>');
-
-            $note.text(note.text);
-            $span.addClass("close");
-            $note.appendTo($node);
-            $note.append($span);
-        }
+    function initializeCollection(name) {
+        var collection = db.getCollection(name);
+        if (!collection)
+            collection = db.addCollection(name);
+        return collection;
     }
 
-    $("li").mousedown(function () {
-        var el = document.getElementById('node');
-        var sortable = Sortable.create(el, {
-            store: {
-                /**
-                 * Get the order of elements. Called once during initialization.
-                 * @param   {Sortable}  sortable
-                 * @returns {Array}
-                 */
-                get: function (sortable) {
-                    var order = localStorage.getItem("node-order");
-                    return order ? order.split('|') : [];
-                },
+    var nodes, items;
 
-                /**
-                 * Save the order of elements. Called onEnd (when the item is dropped).
-                 * @param {Sortable}  sortable
-                 */
-                set: function (sortable) {
-                    var nodes = sortable["el"]["childNodes"];
-                    var order = [];
-                    for (var index = 0; index < nodes.length; index++) {
-                        var node = nodes[index]["id"];
-                        order.push(node);
+    var url = window.location.href;
+    if (url.indexOf("id=") === -1) { //分類
+        var node = db.getCollection('node-order');
+
+        $('#node').fadeIn();
+        $('#item').fadeOut();
+
+        if (node.length > 0) {
+
+            var $node = $('#node');
+            var note = [];
+            for (var index = 0; index < node.length; index++) {
+                note = db.getItem(node[index]);
+                var $note = $('<li id=' + node[index] + '>');
+                var $a = $('<a href=?id=' + node[index] + '>');
+                var $span = $('<span>x</span>');
+
+                $a.text(note.text);
+                $span.addClass("close");
+                $note.appendTo($node);
+                $note.append($a);
+                $note.append($span);
+            }
+        }
+        $(this).mousedown(function () {
+            var el = document.getElementById('node');
+            var sortable = Sortable.create(el, {
+                store: {
+                    /**
+                     * Get the order of elements. Called once during initialization.
+                     * @param   {Sortable}  sortable
+                     * @returns {Array}
+                     */
+                    get: function (sortable) {
+                        var order = localStorage.getItem("node-order");
+                        return order ? order.split('|') : [];
+                    },
+
+                    /**
+                     * Save the order of elements. Called onEnd (when the item is dropped).
+                     * @param {Sortable}  sortable
+                     */
+                    set: function (sortable) {
+                        var nodes = sortable["el"]["childNodes"];
+                        var order = [];
+                        for (var index = 0; index < nodes.length; index++) {
+                            var node = nodes[index]["id"];
+                            order.push(node);
+                        }
+                        localStorage.setItem("node-order", JSON.stringify(order));
                     }
-                    localStorage.setItem("node-order", JSON.stringify(order));
+                }
+            });
+        });
+
+        $("#add").click(function () {
+            var note = {
+                text: $('#input').val()
+            };
+            db.insert('node-order', note);
+            var $node = $('#node');
+            var $note = $('<li>');
+            var $span = $('<span>x</span>');
+            $note.text(note.text);
+            $span.addClass("close");
+            $span.append($note);
+            $note.appendTo($node);
+            $note.append($span);
+            location.reload();
+        });
+        $(".close").click(function () {
+            var $li = $(this).parents("li").attr('id');
+            db.delete($li);
+            location.reload();
+        });
+    } else {
+        var $params = url.slice(url.indexOf("id=") + 3, url.length);
+
+        $('#input').attr("placeholder", "請輸入項目名稱");
+        $('#node').fadeOut();
+        $('#item').fadeIn();
+        $('#back').fadeIn();
+
+        items = db.getCollection("item-keys");
+        if (items.length > 0) {
+            for (var index = 0; index < items.length; index++) {
+                //console.log(items[index]);  //ex:item_1498650772708
+                item = db.getItem(items[index]);
+                //console.log(item.id);   //ex:node_1498650761345
+
+                var $item = $('#item');
+                if (item.id === $params) {
+                    var $note = $('<li id=' + item.key + '>');
+                    var $span = $('<span>x</span>');
+
+                    $note.text(item.text);
+                    $span.addClass("close");
+                    $note.appendTo($item);
+                    $note.append($span);
                 }
             }
-        });
-    });
 
-    $("#add").click(function () {
-        var note = {
-            text: $('#input').val()
-        };
-        db.insert('node-order', note);
-        var $node = $('#node');
-        var $note = $('<li>');
-        var $span = $('<span>x</span>');
-        $note.text(note.text);
-        $span.addClass("close");
-        $span.append($note);
-        $note.appendTo($node);
-        $note.append($span);
-        location.reload();
-    });
-    $("span").click(function () {
-        var $li = $(this).parents("li").attr('id');
-        db.delete($li);
-        localStorage.removeItem($li);
-        location.reload();
-    });
+            $(this).mousedown(function () {
+                var el = document.getElementById('item');
+                var sortable = Sortable.create(el, {
+                    store: {
+                        /**
+                         * Get the order of elements. Called once during initialization.
+                         * @param   {Sortable}  sortable
+                         * @returns {Array}
+                         */
+                        get: function (sortable) {
+                            var order = localStorage.getItem($params);
+                            return order ? order.split('|') : [];
+                        },
+
+                        /**
+                         * Save the order of elements. Called onEnd (when the item is dropped).
+                         * @param {Sortable}  sortable
+                         */
+                        set: function (sortable) {
+                            var items = sortable["el"]["childNodes"];
+                            // console.log("items:" + items);
+                            var order = [];
+                            for (var index = 0; index < items.length; index++) {
+                                var node = items[index]["id"];
+                                // console.log("node:" + node);
+                                order.push(node);
+                            }
+                            localStorage.setItem("item-keys", JSON.stringify(order));
+                        }
+                    }
+                });
+            });
+        }
+
+        $("#add").click(function () {
+            var note = {
+                id: $params,
+                text: $('#input').val()
+            };
+            db.insert($params, note);
+            var $item = $('#item');
+            var $note = $('<li>');
+            var $span = $('<span>x</span>');
+            $note.text(note.text);
+            $span.addClass("close");
+            $span.append($note);
+            $note.appendTo($item);
+            $note.append($span);
+            location.reload();
+        });
+        $(".close").click(function () {
+            var $li = $(this).parents("li").attr('id');
+            db.delete($li);
+            localStorage.removeItem($li);
+            location.reload();
+        });
+        $("#back").click(function () {
+            window.location = history.go(-1);
+        });
+    }
 });
 
 /***/ })

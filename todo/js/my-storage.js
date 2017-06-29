@@ -36,37 +36,81 @@ MyStorage.prototype.setItem = function (key, value) {
 
 MyStorage.prototype.insert = function (collectionName, item) {
     var newinput = [];
-    var Name;
-    if (collectionName === "node-order")
+    var Name, orgkey, collection, keys, key, index;
+    if (collectionName === "node-order") {
         Name = "node";
-    var orgkey = this.getCollection(collectionName);
-    var collection = new Collection(Name);
-    this.collections[Name] = collection;
-    collection = this.collections[Name];
-    collection.insert(item);
-    var keys = collection.keys;
-    var key = keys[keys.length - 1];
-    this.setItem(collectionName, keys);
-    this.setItem(key, item);
+        orgkey = this.getCollection(collectionName);
+        collection = new Collection(Name);
+        this.collections[Name] = collection;
+        collection = this.collections[Name];
+        collection.insert(item);
+        keys = collection.keys;
+        key = keys[keys.length - 1];
+        this.setItem(collectionName, keys);
+        this.setItem(key, item);
 
-    if (orgkey.length > 0) {
-        for (var index = 0; index < orgkey.length; index++) {
-            newinput.push(orgkey[index]);
+        if (orgkey.length > 0) {
+            for (index = 0; index < orgkey.length; index++) {
+                newinput.push(orgkey[index]);
+            }
+            newinput.push(key);
+            this.setItem(collectionName, newinput);
         }
-        newinput.push(key);
-        this.setItem(collectionName, newinput);
+    } else {
+        Name = "item";
+        orgkey = this.getCollection("item-keys");
+        collection = new Collection(Name);
+        this.collections[Name] = collection;
+        collection = this.collections[Name];
+        collection.insert(item);
+        keys = collection.keys;
+        key = keys[keys.length - 1];
+        this.setItem("item-keys", keys);
+        this.setItem(key, item);
+
+        if (orgkey.length > 0) {
+            for (index = 0; index < orgkey.length; index++) {
+                newinput.push(orgkey[index]);
+            }
+            newinput.push(key);
+            this.setItem("item-keys", newinput);
+        }
     }
 };
 
 MyStorage.prototype.delete = function (key) {
-    var keys = this.getCollection('node-order');
+    var url = window.location.href;
+    if (url.indexOf("id=") === -1) { //分類
+        var ItemKeys = this.getCollection("item-keys"); //讀取item-keys陣列
+        var newItemKey = [];
+        for (var index = 0; index < ItemKeys.length; index++) {
+            var Item = this.getItem(ItemKeys[index]);
+            if (Item.id === key) {
+                localStorage.removeItem(Item.key);
+            } else {
+                newItemKey.push(ItemKeys[index])
+            }
+        }
+        this.setItem("item-keys", newItemKey);
+        var keys = this.getCollection('node-order'); //刪除後要更新的node-order
+        for (var index = 0; index < keys.length; index++) { //產出最後的node-order
+            if (keys[index] === key) {
+                keys.splice(index, 1);
+            }
+        }
+        this.setItem("node-order", keys);
+        localStorage.removeItem(key);
+    } else {
+        var keys = this.getCollection('item-keys');
 
-    var item = this.getItem(key);
-    for (var index = 0; index < keys.length; index++) {
-        if (keys[index] === key)
-            keys.splice(index, 1);
+        item = this.getItem(key);
+        for (var index = 0; index < keys.length; index++) {
+            if (keys[index] === key)
+                keys.splice(index, 1);
+        }
+        this.setItem("item-keys", keys);
+
     }
-    this.setItem("node-order", keys);
 };
 
 module.exports = MyStorage;
