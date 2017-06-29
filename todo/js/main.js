@@ -1,6 +1,7 @@
 var Storage = require('./my-storage');
 var $ = require('jquery');
 var Sortable = require('sortablejs');
+var Count = require('./count');
 
 $(function () {
     var db = new Storage("localStorage");
@@ -25,17 +26,27 @@ $(function () {
 
             var $node = $('#node');
             var note = [];
+            var $span1;
             for (var index = 0; index < node.length; index++) {
                 note = db.getItem(node[index]);
                 var $note = $('<li id=' + node[index] + '>');
                 var $a = $('<a href=?id=' + node[index] + '>');
-                var $span = $('<span>x</span>');
+                if (Count(node[index]) > 0) {
+                    $span1 = $('<span>' + Count(node[index]) + '</span>');
+                } else {
+                    $span1 = $('');
+                }
+                var $span2 = $('<span>x</span>');
 
                 $a.text(note.text);
-                $span.addClass("close");
+                if (Count(node[index]) > 0) {
+                    $span1.addClass("count");
+                }
+                $span2.addClass("close");
                 $note.appendTo($node);
                 $note.append($a);
-                $note.append($span);
+                $note.append($span1);
+                $note.append($span2);
             }
         }
         $(this).mousedown(function () {

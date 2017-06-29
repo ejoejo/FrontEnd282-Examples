@@ -88,7 +88,7 @@ MyStorage.prototype.delete = function (key) {
             if (Item.id === key) {
                 localStorage.removeItem(Item.key);
             } else {
-                newItemKey.push(ItemKeys[index])
+                newItemKey.push(ItemKeys[index]);
             }
         }
         this.setItem("item-keys", newItemKey);

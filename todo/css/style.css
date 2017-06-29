@@ -115,7 +115,7 @@ ul li.checked::before {
 .close {
     position: absolute;
     right: 0;
-    top: 0;
+    top: 3px;
     padding: 12px 16px 12px 16px;
 }
 
@@ -152,4 +152,9 @@ a {
 
 #back:hover {
     background-color: #bbb;
+}
+
+.count {
+    color: #f44336;
+    font-weight: bold;
 }
